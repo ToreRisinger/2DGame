@@ -1,0 +1,10 @@
+# exclude everything except directory foo/bar
+Debug/*
+gui/*
+Release/*
+*.log
+*.rc
+*.aps
+*.vcxproj
+*.filters
+*.user
