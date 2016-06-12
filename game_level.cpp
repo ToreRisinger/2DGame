@@ -9,13 +9,26 @@
 #include "math_utils.h"
 #include "graphics.h"
 #include "particle_system.h"
+#include "game.h"
 
-GameLevel::GameLevel(float width, float height)
+GameLevel::GameLevel()
 {
-	m_texture_type = TextureType::NONE;
+	m_game_level = nullptr;
+}
 
-	m_width = width;
-	m_height = height;
+GameLevel::~GameLevel()
+{
+
+}
+
+void GameLevel::setup_new_game_level(Game_Level_Option options)
+{
+	clean_up();
+
+	set_texture_type(options.dirt_type);
+
+	m_width = options.width;
+	m_height = options.height;
 
 	int size = m_width * m_height;
 	m_game_level = new LevelData[size];
@@ -23,9 +36,13 @@ GameLevel::GameLevel(float width, float height)
 	fillGameLevel();
 }
 
-GameLevel::~GameLevel()
+void GameLevel::clean_up()
 {
-
+	if (m_game_level != nullptr)
+	{
+		delete[] m_game_level;
+		m_game_level = nullptr;
+	}
 }
 
 void GameLevel::on_tick(unsigned int delta_time)
@@ -35,7 +52,7 @@ void GameLevel::on_tick(unsigned int delta_time)
 
 void GameLevel::draw()
 {
-	m_graphics->render_game_level(m_texture_type);
+	Game::graphics->render_game_level(m_texture_type);
 }
  
 
@@ -140,8 +157,8 @@ void GameLevel::destroyCircleWithParticles(int x, int y, int radius)
 
 	if (changed) 
 	{
-		Particle_System* particle_system = new Particle_System(x, y, particle_positions, Game_Object::m_game_level->get_level_color(), 500, 0.001);
-		Game_Object::m_entities->push_front(particle_system);
+		Particle_System* particle_system = new Particle_System(x, y, particle_positions, Game::game_level->get_level_color(), 500, 0.001);
+		Game::entities.push_front(particle_system);
 
 		m_changes.push(Rect{ 0, 0, m_width, m_height });
 	}

@@ -6,9 +6,14 @@
 #include <GL/glew.h>
 #include <GL/GL.h>
 
+#include <glm/glm.hpp>
+
 #include <string>
 #include <vector>
 #include <list>
+#include <map>
+
+#include <SDL/SDL_image.h>
 
 #include "shader_program.h"
 #include "math_utils.h"
@@ -19,7 +24,7 @@
 
 const float GRAPHIC_SCALE = 4;
 
-const int NR_OF_TEXTURES = 53;
+const int NR_OF_TEXTURES = 100;
 
 enum TextureType {
 	NONE,
@@ -92,10 +97,33 @@ enum TextureType {
 	HP_BAR,
 
 	//ICON
-	RIFLE_ICON,
-	GRENADE_LAUNCHER_ICON,
-	SHOVEL_ICON
+	SOLDIER_RIFLE_ICON,
+	SOLDIER_ROCKET_LAUNCHER_ICON,
+	SHOVEL_ICON,
 
+	//BUTTONS
+	BUTTON_1_128X64_IDLE,
+	BUTTON_1_128X64_HIGHLIGHTED,
+	RADIO_BUTTON_1_32X32_NOT_SELECTED,
+	RADIO_BUTTON_1_32X32_SELECTED
+};
+
+/// Holds all state information relevant to a character as loaded using FreeType
+struct Font_Character {
+    GLuint textureID;   // ID handle of the glyph texture
+    glm::ivec2 size;    // Size of glyph
+    glm::ivec2 bearing;  // Offset from baseline to left/top of glyph
+    GLuint advance;    // Horizontal offset to advance to next glyph
+};
+
+enum Text_Textures {
+	MENU_BUTTON_TEXT_MULTIPLAYER,
+	MENU_BUTTON_TEXT_SINGLEPLAYER,
+	MENU_BUTTON_TEXT_LOADOUT,
+	MENU_BUTTON_TEXT_EXIT,
+	MENU_BUTTON_TEXT_START_GAME,
+	MENU_BUTTON_TEXT_BACK,
+	MENU_BUTTON_TEXT_RESUME
 };
 
 class Graphics
@@ -110,6 +138,8 @@ public:
 	//Render texture
 	void render_texture(TextureType texture, float x, float y, float z, float width, float height, float rot);
 	void render_texture_ui(TextureType texture, float x, float y, float width, float height, float rot);
+
+	void render_dynamic_text(std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color);
 
 	//Render game level
 	void render_game_level(TextureType texture);
@@ -126,6 +156,7 @@ public:
 	int getParticleSystemID();
 	void returnParticleSystemID(int id);
 
+	void init_game_level_graphics();
 private:
 	void init_systems(std::string window_title, int window_width, int window_height);
 
@@ -188,7 +219,7 @@ private:
 	GLuint m_texture_vbo_ID;
 
 	//-----GAME LEVEL GRAPHICS-----
-	void init_game_level_graphics();
+	
 
 	void updateGameLevelMaskTextureInOpenGL();
 
@@ -204,5 +235,16 @@ private:
 	float m_map_texture_width;
 	float m_map_texture_height;
 
+	//----FONT GRAPHICS-----
+	void init_font_graphics();
+	std::map<GLchar, Font_Character> m_characters;
+
+	GLuint m_font_vao_ID;
+	GLuint m_font_vbo_ID;
+
+	ShaderProgram* m_shader_program_font;
+
+	//----STATIC TEXT GRAPHICS-----
+	
 };
 

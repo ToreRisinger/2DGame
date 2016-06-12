@@ -7,6 +7,7 @@
 #include "graphics.h"
 #include "player.h"
 #include "character.h"
+#include "game.h"
 
 Projectile::Projectile(float x, float y, int width, int height, float x_vel, float y_vel, int hit_damage, int explosion_damage) 
 	: Moving_Game_Entity{ x, y, width, height, x_vel, y_vel}
@@ -28,6 +29,7 @@ Projectile::Projectile(float x, float y, int width, int height, float x_vel, flo
 	m_is_stuck = false;
 
 	m_can_hit_player = true;
+	m_can_hit_owner = false;
 
 	m_on_death_registered = false;
 	m_on_tick_registered = false;
@@ -64,7 +66,7 @@ void Projectile::on_tick(unsigned int delta_time)
 		case NORMAL:
 
 			//Move if not hit something
-			if(Game_Object::m_game_level->isSolid(new_x, new_y))
+			if (Game::game_level->isSolid(new_x, new_y))
 			{
 				set_dead(true);
 				on_death();
@@ -91,12 +93,12 @@ void Projectile::on_tick(unsigned int delta_time)
 			//x_vel fast
 			if (m_x_vel * m_x_vel > m_y_vel * m_y_vel)
 			{
-				if (Game_Object::m_game_level->isSolid(new_x, m_y))
+				if (Game::game_level->isSolid(new_x, m_y))
 				{
 					m_x_vel = -m_x_vel * m_bounce;
 					new_x = m_x + m_x_vel * delta_time;
 				}
-				else if (Game_Object::m_game_level->isSolid(new_x, new_y))
+				else if (Game::game_level->isSolid(new_x, new_y))
 				{
 					m_y_vel = -m_y_vel * m_bounce;
 					new_y = m_y + m_y_vel * delta_time;
@@ -111,12 +113,12 @@ void Projectile::on_tick(unsigned int delta_time)
 			//y_vel fast
 			else
 			{
-				if (Game_Object::m_game_level->isSolid(m_x, new_y))
+				if (Game::game_level->isSolid(m_x, new_y))
 				{
 					m_y_vel = -m_y_vel * m_bounce;
 					new_y = m_y + m_y_vel * delta_time;
 				}
-				else if (Game_Object::m_game_level->isSolid(new_x, new_y))
+				else if (Game::game_level->isSolid(new_x, new_y))
 				{
 					m_x_vel = -m_x_vel * m_bounce;
 					new_x = m_x + m_x_vel * delta_time;
@@ -142,7 +144,7 @@ void Projectile::on_tick(unsigned int delta_time)
 			}
 
 			//Only move if not hit something
-			if (!m_is_stuck && Game_Object::m_game_level->isSolid(new_x, new_y))
+			if (!m_is_stuck && Game::game_level->isSolid(new_x, new_y))
 			{
 				m_is_stuck = true;
 				m_stuck_x = new_x;
@@ -151,7 +153,7 @@ void Projectile::on_tick(unsigned int delta_time)
 				m_x_vel = 0.0;
 				m_y_vel = 0.0;
 			}
-			else if (m_is_stuck && Game_Object::m_game_level->isSolid(m_stuck_x, m_stuck_y))
+			else if (m_is_stuck && Game::game_level->isSolid(m_stuck_x, m_stuck_y))
 			{
 				m_x_vel = 0.0;
 				m_y_vel = 0.0;
@@ -179,16 +181,16 @@ void Projectile::on_tick(unsigned int delta_time)
 
 void Projectile::draw()
 {
-	Game_Object::m_graphics->render_texture(m_texture_type, m_x, m_y, -0.3, m_width, m_height, getRotation());
+	Game::graphics->render_texture(m_texture_type, m_x, m_y, -0.3, m_width, m_height, getRotation());
 }
 
 void Projectile::on_death()
 {
-	Game_Object::m_game_level->destroyCircle(m_x, m_y, m_exploding_radius);
+	Game::game_level->destroyCircle(m_x, m_y, m_exploding_radius);
 
 	hit_players_explosion();
 
-	Game_Object::m_entities->push_front(new Effect(m_x, m_y, m_effect_size, m_max_life_time, m_effect_start_texture, m_time_per_frame, m_number_of_frames));	
+	Game::entities.push_front(new Effect(m_x, m_y, m_effect_size, m_max_life_time, m_effect_start_texture, m_time_per_frame, m_number_of_frames));
 }
 
 void Projectile::on_hit_character(Character* character)
@@ -272,22 +274,22 @@ void Projectile::set_projectile_type(Projectile_Type type)
 
 void Projectile::hit_players()
 {
-	for (int i = 0; i < m_players->size(); i++)
+	for (int i = 0; i < Game::players.size(); i++)
 	{
-		if (m_players->at(i)->getCharacter()->point_is_in_character(m_x, m_y))
+		if (Game::players.at(i)->getCharacter() != m_owner && Game::players.at(i)->getCharacter()->point_is_in_character(m_x, m_y))
 		{
-			on_hit_character(m_players->at(i)->getCharacter());
+			on_hit_character(Game::players.at(i)->getCharacter());
 		}
 	}
 }
 
 void Projectile::hit_players_explosion()
 {
-	for (int i = 0; i < m_players->size(); i++)
+	for (int i = 0; i < Game::players.size(); i++)
 	{
-		if (m_players->at(i)->getCharacter()->point_is_in_range_of_character(m_x, m_y, m_exploding_radius))
+		if (Game::players.at(i)->getCharacter()->point_is_in_range_of_character(m_x, m_y, m_exploding_radius))
 		{
-			on_hit_character_with_explosion(m_players->at(i)->getCharacter());
+			on_hit_character_with_explosion(Game::players.at(i)->getCharacter());
 		}
 	}
 }
@@ -304,4 +306,14 @@ void Projectile::set_effect(int effect_size, int max_life_time, TextureType effe
 void Projectile::set_can_hit_players(bool value)
 {
 	m_can_hit_player = value;
+}
+
+void Projectile::set_can_hit_owner(bool value)
+{
+	m_can_hit_owner= value;
+}
+
+void Projectile::set_owner(Character* owner)
+{
+	m_owner = owner;
 }

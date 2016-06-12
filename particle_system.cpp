@@ -1,9 +1,7 @@
 #include "particle_system.h"
 
 #include "graphics.h"
-
-#include <iostream>
-#include <iomanip>
+#include "game.h"
 
 Particle_System::Particle_System(float x, float y, int particles, vec3 color, int life_time, float gravity) : Positional_Game_Entity{ x, y, 0, 0}
 {
@@ -12,7 +10,7 @@ Particle_System::Particle_System(float x, float y, int particles, vec3 color, in
 	m_number_of_particles = particles;
 	m_color = color;
 
-	m_particle_system_id = Game_Object::m_graphics->getParticleSystemID();
+	m_particle_system_id = Game::graphics->getParticleSystemID();
 
 	if (m_particle_system_id != -1)
 	{
@@ -31,7 +29,7 @@ Particle_System::Particle_System(float x, float y, int particles, vec3 color, in
 		}
 
 		m_update_timer.start();
-		Game_Object::m_graphics->update_particles(m_positions, m_number_of_particles, m_particle_system_id);
+		Game::graphics->update_particles(m_positions, m_number_of_particles, m_particle_system_id);
 	}
 	else
 	{
@@ -53,7 +51,7 @@ Particle_System::Particle_System(float x, float y, std::vector<vec2> particle_po
 	
 	m_color = color;
 
-	m_particle_system_id = Game_Object::m_graphics->getParticleSystemID();
+	m_particle_system_id = Game::graphics->getParticleSystemID();
 
 	if (m_particle_system_id != -1)
 	{
@@ -78,7 +76,7 @@ Particle_System::Particle_System(float x, float y, std::vector<vec2> particle_po
 		m_number_of_particles = number_of_particles_spawned;
 
 		m_update_timer.start();
-		Game_Object::m_graphics->update_particles(m_positions, m_number_of_particles, m_particle_system_id);
+		Game::graphics->update_particles(m_positions, m_number_of_particles, m_particle_system_id);
 	}
 	else
 	{
@@ -91,7 +89,7 @@ Particle_System::~Particle_System()
 {
 	delete[] m_particles;
 	delete[] m_positions;
-	Game_Object::m_graphics->returnParticleSystemID(m_particle_system_id);
+	Game::graphics->returnParticleSystemID(m_particle_system_id);
 }
 
 void Particle_System::on_tick(unsigned int delta_time)
@@ -118,13 +116,13 @@ void Particle_System::draw()
 	if (m_update_timer.getTime() >= 16)
 	{
 		m_update_timer.start();
-		Game_Object::m_graphics->update_particles(m_positions, m_number_of_particles, m_particle_system_id);
+		Game::graphics->update_particles(m_positions, m_number_of_particles, m_particle_system_id);
 	}
 
-	Game_Object::m_graphics->render_particles(m_number_of_particles, m_particle_system_id, m_color);
+	Game::graphics->render_particles(m_number_of_particles, m_particle_system_id, m_color);
 }
 
 void Particle_System::set_gravity(float gravity)
 {
-	m_gravity = (Game_Object::m_graphics->getOpenGLCoordinates(gravity, 0)).x;
+	m_gravity = (Game::graphics->getOpenGLCoordinates(gravity, 0)).x;
 }

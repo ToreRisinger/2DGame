@@ -39,21 +39,27 @@ void LocalPlayer::handle_input(unsigned int time)
 	float speed = m_character->getSpeed();
 	float x_vel = 0;
 
+	int up = Input::KEYS::KEY_I;
+	int down = Input::KEYS::KEY_K;
+	int left = Input::KEYS::KEY_J;
+	int right = Input::KEYS::KEY_L;
+
+	int jump = Input::KEYS::KEY_SPACE;
+
+	int skill_1 = Input::KEYS::KEY_Q;
+	int skill_2 = Input::KEYS::KEY_W;
+	int skill_3 = Input::KEYS::KEY_E;
+	int skill_4 = Input::KEYS::KEY_R;
+	
 	//-----------MOVEMENT-----------
 	if (m_character->getDirection() == Direction::RIGHT)
 	{
-		if (m_input->getKeyDown(Input::KEYS::KEY_D))
+		if (m_input->getKeyDown(right))
 		{
 			x_vel += speed;
 
-			/*
-			if (m_input->getKeyPressed(Input::KEYS::KEY_A))
-			{
-				m_character->useSkill();
-			}
-			*/
 		}
-		else if (m_input->getKeyDown(Input::KEYS::KEY_A))
+		else if (m_input->getKeyDown(left))
 		{
 			m_character->setDirection(Direction::LEFT);
 		}
@@ -65,19 +71,12 @@ void LocalPlayer::handle_input(unsigned int time)
 
 	if (m_character->getDirection() == Direction::LEFT)
 	{
-		if (m_input->getKeyDown(Input::KEYS::KEY_A))
+		if (m_input->getKeyDown(left))
 		{
 			x_vel -= speed;
-
-			/*
-			if (m_input->getKeyPressed(Input::KEYS::KEY_D))
-			{
-				m_character->useSkill();
-			}
-			*/
 			
 		}
-		else if (m_input->getKeyDown(Input::KEYS::KEY_D))
+		else if (m_input->getKeyDown(right))
 		{
 			m_character->setDirection(Direction::RIGHT);
 		}
@@ -91,18 +90,18 @@ void LocalPlayer::handle_input(unsigned int time)
 	m_character->setXVel(x_vel);
 
 	//-----------AIM-----------
-	if (m_input->getKeyDown(Input::KEYS::KEY_W))
+	if (m_input->getKeyDown(up))
 	{
 		m_character->increaseAim(time);
 	}
 
-	if (m_input->getKeyDown(Input::KEYS::KEY_S))
+	if (m_input->getKeyDown(down))
 	{
 		m_character->decreaseAim(time);
 	}
 
 	//-----------JUMP-----------
-	if (m_input->getKeyPressed(Input::KEYS::KEY_LCTRL))
+	if (m_input->getKeyPressed(jump))
 	{
 		if (m_character->isWalking())
 		{
@@ -110,16 +109,24 @@ void LocalPlayer::handle_input(unsigned int time)
 		}
 	}
 
-	//-----------SHOOT-----------
-	if (m_input->getKeyDown(Input::MOUSE::MOUSE_LEFT_BUTTON))
+	//-----------SKILLS-----------
+	if (m_input->getKeyDown(skill_1))
 	{
-		m_character->use_item();
+		m_character->use_skill(1);
 	}
 
-	//-----------CHANGE SKILL SELECTION-----------
-	if (m_input->getKeyPressed(Input::KEYS::KEY_1))
+	if (m_input->getKeyDown(skill_2))
 	{
-		m_character->select_next_item();
+		m_character->use_skill(2);
 	}
 
+	if (m_input->getKeyDown(skill_3))
+	{
+		m_character->use_skill(3);
+	}
+
+	if (m_input->getKeyDown(skill_4))
+	{
+		m_character->use_skill(4);
+	}
 }

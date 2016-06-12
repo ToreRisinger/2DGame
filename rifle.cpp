@@ -5,8 +5,7 @@
 #include "functional"
 #include "math_utils.h"
 #include "graphics.h"
-
-#include <iostream>
+#include "game.h"
 
 TextureType Rifle::m_projectile_texture = TextureType::BULLET_10X10_3;
 float Rifle::m_speed = 1.0;
@@ -56,7 +55,7 @@ void Rifle::use()
 
 		projectile->set_effect(m_effect_size, m_effect_life_time, m_explosion_texture, m_effect_life_time / m_number_of_effect_frames, m_number_of_effect_frames);
 
-		Game_Object::m_entities->push_front(projectile);
+		Game::entities.push_front(projectile);
 	}
 
 }

@@ -5,6 +5,7 @@
 #include "functional"
 #include "math_utils.h"
 #include "graphics.h"
+#include "game.h"
 
 TextureType Sticky_Grenade::m_projectile_texture = TextureType::GRANADE_10X10_2;
 float Sticky_Grenade::m_speed = 0.4;
@@ -66,7 +67,7 @@ void Sticky_Grenade::use()
 
 		projectile->set_effect(m_effect_size, m_effect_life_time, m_explosion_texture, m_effect_life_time / m_number_of_effect_frames, m_number_of_effect_frames);
 
-		Game_Object::m_entities->push_front(projectile);
+		Game::entities.push_front(projectile);
 
 	}
 }

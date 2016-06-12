@@ -5,8 +5,7 @@
 #include "functional"
 #include "math_utils.h"
 #include "graphics.h"
-
-#include <iostream>
+#include "game.h"
 
 TextureType Pistol::m_projectile_texture = TextureType::BULLET_10X10_2;
 float Pistol::m_speed = 1.0;
@@ -57,6 +56,6 @@ void Pistol::use()
 
 		projectile->setRotation((m_character->getAim() * (M_PI / 180)));
 
-		Game_Object::m_entities->push_front(projectile);
+		Game::entities.push_front(projectile);
 	}
 }

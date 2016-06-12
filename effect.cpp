@@ -1,6 +1,7 @@
 #include "effect.h"
 
 #include "graphics.h"
+#include "game.h"
 
 Effect::Effect(float x, float y, int size, int max_life_time, TextureType m_start_texture, int m_time_per_frame, int m_number_of_frames) : 
 Positional_Game_Entity{ x, y, size, size }, m_animation(m_start_texture, m_time_per_frame, m_number_of_frames)
@@ -31,7 +32,7 @@ void Effect::on_tick(unsigned int delta_time)
 
 void Effect::draw()
 {
-	Game_Object::m_graphics->render_texture(m_animation.get_texture_type(), m_x, m_y, -0.4, m_width, m_height, getRotation());
+	Game::graphics->render_texture(m_animation.get_texture_type(), m_x, m_y, -0.4, m_width, m_height, getRotation());
 }
 
 

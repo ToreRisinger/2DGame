@@ -5,37 +5,43 @@
 #include "local_player.h"
 #include "bot_player.h"
 #include "character.h"
+#include "character_soldier.h"
 #include "graphics.h"
+#include "gui_element_button.h"
+#include "gui_element_hp_bar.h"
+#include "gui_element_check_box.h"
+#include "gui_element_skill_icons.h"
+#include "callback.h"
 
 #include <math.h>
 #include <iostream>
 
+
+int Game::WINDOW_WIDTH = 1280;
+int Game::WINDOW_HEIGHT = 720;
+
+Graphics* Game::graphics = nullptr;
+Input* Game::input = nullptr;
+Player* Game::local_player = nullptr;
+std::vector<Player*> Game::players;
+std::list<Game_Entity*> Game::entities;
+GameLevel* Game::game_level = nullptr;
+GameState Game::game_state = MAIN_MENU;
+
 Game::Game()
 {
-	m_debug_mode = true;
+	game_level = new GameLevel();
+	game_level->set_texture_type(TextureType::GAME_LEVEL_TEXTURE_SAND);
 
-	m_window_width = 1280;
-	m_window_height = 720;
+	graphics = new Graphics("Game", WINDOW_WIDTH, WINDOW_HEIGHT, game_level, &entities, &players);
 
-	m_game_level = new GameLevel(800, 400);
-	m_game_level->set_texture_type(TextureType::GAME_LEVEL_TEXTURE_SAND);
+	input = new Input();
 
-	m_graphics = new Graphics("Game", m_window_width, m_window_height, m_game_level, &m_entities, &m_players);
-
-	m_input = new Input();
-
-	m_local_player = new LocalPlayer(m_input);
-
-	m_ingame_GUI = new Ingame_GUI();
-
-	Game_Object::set_game_level(m_game_level);
-	Game_Object::set_players(&m_players);
-	Game_Object::set_game_entities(&m_entities);
-	Game_Object::set_graphics(m_graphics);
+	local_player = new LocalPlayer(input);
 
 	m_running = true;
 
-	initGUI();
+	init_GUI();
 
 	m_active_gui = m_main_menu_gui;
 }
@@ -79,11 +85,11 @@ void Game::run()
 
 
 		//-----RENDER-----
-		m_graphics->clearScreen();
+		graphics->clearScreen();
 
 		this->draw_game();
 
-		m_graphics->swapWindow();
+		graphics->swapWindow();
 
 
 
@@ -93,10 +99,7 @@ void Game::run()
 		{
 			sec.start();
 
-			if (m_debug_mode)
-			{
-				debug_output("Fps: " + std::to_string(fps));
-			}
+			debug_output("Fps: " + std::to_string(fps));
 
 			fps = 0;
 		}
@@ -105,81 +108,73 @@ void Game::run()
 
 void Game::draw_game()
 {
-	if (m_game_state == SINGLEPLAYER_GAME)
+
+	if (game_state == SINGLEPLAYER_GAME)
 	{
 		//SET CAMERA POSITION
 		center_camera_on_local_player();
 
 		//RENDER GAME_LEVEL
-		m_game_level->draw();
+		game_level->draw();
 
 		//RENDER ALL CHARACTERS
-		for (Player* p : m_players)
+		for (Player* p : players)
 		{
 			p->getCharacter()->draw();
 		}
 
 		//RENDER ALL GAME ENTITIES
-		for (Game_Entity* ge : m_entities)
+		for (Game_Entity* ge : entities)
 		{
 			ge->draw();
 		}
-
-		//RENDER INGAME GUI
-		m_ingame_GUI->draw();
+		
 	}
-	else if (m_game_state == SINGLEPLAYER_GAME_PAUSE_MENU)
+	else if (game_state == SINGLEPLAYER_GAME_PAUSE_MENU)
 	{
 		//SET CAMERA POSITION
 		center_camera_on_local_player();	
 
+		//RENDER GAME_LEVEL
+		game_level->draw();
+
 		//RENDER ALL CHARACTERS
-		for (Player* p : m_players)
+		for (Player* p : players)
 		{
 			p->getCharacter()->draw();
 		}
 
 		//RENDER ALL GAME ENTITIES
-		for (Game_Entity* ge : m_entities)
+		for (Game_Entity* ge : entities)
 		{
 			ge->draw();
 		}
-
-		//RENDER GAME_LEVEL
-		m_game_level->draw();
-
-		//RENDER CURSOR AND GUI
-		m_active_gui->draw();
-		m_cursor_gui->draw();
 	}
 	else
 	{
-		//RENDER CURSOR AND GUI
-		m_active_gui->draw();
-		m_cursor_gui->draw();
+
 	}
+
+	m_active_gui->draw();
 }
 
 
 void Game::on_tick(Timer& last_update)
 {
-	//Update time on GUI
-	m_cursor_gui->update();
-	m_active_gui->update();
-
-	if (m_game_state == SINGLEPLAYER_GAME)
+	
+	if (last_update.getTime() > 0)
 	{
-		if (last_update.getTime() > 0) 
-		{
-			int time_passed = last_update.getTime();
-			last_update.start();
-			
-			//TICK ALL CHARACTERS
-			for (Player* p : m_players)
-			{
-				p->on_tick(time_passed);
+		m_active_gui->on_tick(last_update.getTime());
 
-				if (p->getCharacter()->is_dead()) 
+		if (game_state == SINGLEPLAYER_GAME)
+		{			
+
+			//TICK ALL CHARACTERS
+			for (Player* p : players)
+			{
+				p->on_tick(last_update.getTime());
+
+				if (p->getCharacter()->is_dead())
 				{
 					p->getCharacter()->set_dead(false);
 					p->getCharacter()->set_start_location(200, 200);
@@ -188,40 +183,37 @@ void Game::on_tick(Timer& last_update)
 			}
 
 			//TICK ALL GAME ENTITIES
-			for (Game_Entity* ge : m_entities)
+			for (Game_Entity* ge : entities)
 			{
-				ge->on_tick(time_passed);
+				ge->on_tick(last_update.getTime());
 			}
 
 			//TICK GAME_LEVEL
-			m_game_level->on_tick(time_passed);
+			game_level->on_tick(last_update.getTime());
 
-			//TICK INGAME GUI
-			m_ingame_GUI->on_tick(time_passed);
+			if (input->getKeyPressed(Input::KEYS::KEY_ESCAPE))
+			{
+				change_game_state(SINGLEPLAYER_GAME_PAUSE_MENU);
+			}
 		}
-	
-		if (m_input->getKeyPressed(Input::KEYS::KEY_ESCAPE))
+		else if (game_state == SINGLEPLAYER_GAME_PAUSE_MENU)
 		{
-			change_game_state(SINGLEPLAYER_GAME_PAUSE_MENU);
+			
 		}
-	}
-	else if (m_game_state == SINGLEPLAYER_GAME_PAUSE_MENU)
-	{
-		if (last_update.getTime() > 0) {
-			last_update.start();
-		}
+
+		last_update.start();
 	}
 
 }
 
 void Game::remove_dead_entities()
 {
-	for (auto it = m_entities.begin(); it != m_entities.end();)
+	for (auto it = entities.begin(); it != entities.end();)
 	{
 		if ((*it)->is_dead())
 		{
 			delete *it;
-			it = m_entities.erase(it);
+			it = entities.erase(it);
 		}
 		else
 		{
@@ -232,7 +224,7 @@ void Game::remove_dead_entities()
 
 void Game::handle_input(Timer& last_update)
 {
-	m_input->reset();
+	input->reset();
 
 	SDL_Event evnt;
 	while (SDL_PollEvent(&evnt))
@@ -243,25 +235,26 @@ void Game::handle_input(Timer& last_update)
 		}
 		else
 		{
-			m_input->handleInput(&evnt);
-
-			m_active_gui->handle_input(evnt);
-			m_cursor_gui->handle_input(evnt);
+			input->handleInput(&evnt);			
 		}
 	}
 
-	if (m_game_state == SINGLEPLAYER_GAME)
+	if (game_state == SINGLEPLAYER_GAME)
 	{
 		//Handle the input for all players
-		for (Player* p : m_players)
+		for (Player* p : players)
 		{
 			p->handle_input(last_update.getTime());
 		}
 	}
+
+	m_active_gui->handle_input();
 }
 
 void Game::change_game_state(GameState new_game_state)
 {
+	m_active_gui->reset();
+
 	if (new_game_state == MAIN_MENU)
 	{	
 		m_active_gui = m_main_menu_gui;
@@ -288,45 +281,54 @@ void Game::change_game_state(GameState new_game_state)
 	}
 	else if (new_game_state == SINGLEPLAYER_GAME)
 	{
-		m_active_gui = m_singleplayer_game_gui;
+		m_active_gui = m_in_game_gui;
 	}
 	else if (new_game_state == SINGLEPLAYER_GAME_PAUSE_MENU)
 	{
-		m_active_gui = m_singleplayer_game_pause_menu_gui;
+		m_active_gui = m_singleplayer_pause_menu_gui;
 	}
 	else if (EXIT_GAME)
 	{
 		m_running = false;
-		m_game_state = new_game_state;
+		game_state = new_game_state;
 		return;
 	}
 
-	m_active_gui->mouse_motion(m_input->getMouseX(), m_input->getMouseY());
-
-	m_game_state = new_game_state;
+	game_state = new_game_state;
 }
 
 void Game::start_new_singleplayer_game()
 {
+	m_game_level_option.dirt_type = TextureType::GAME_LEVEL_TEXTURE_DIRT;
+	m_game_level_option.height = 400;
+	m_game_level_option.width = 800;
+
+	game_level->setup_new_game_level(m_game_level_option);
+
+	graphics->init_game_level_graphics();
+
 	//Reset player list
-	while (m_players.size() > 0)
+	while (players.size() > 0)
 	{
-		m_players.pop_back();
+		players.pop_back();
 	}
 
 	//-----LOCAL PLAYER-----
+
 	//Give local player a character
-	m_local_player->set_character(new Character(m_local_player));
-	m_ingame_GUI->set_character(m_local_player->getCharacter());
+	Character *c1 = new Character_Soldier();
+	c1->set_owner(local_player);
+
+	local_player->set_character(c1);
 
 	//Set starting location
-	m_local_player->getCharacter()->set_start_location(200, 200);
+	local_player->getCharacter()->set_start_location(200, 200);
 
 	//Remove the dirt around player
-	m_game_level->destroyCircle(200, 200, 80);
+	game_level->destroyCircle(200, 200, 80);
 
 	//Add local player to player list
-	m_players.push_back(m_local_player);
+	players.push_back(local_player);
 
 	//-----BOT PLAYERS-----
 
@@ -334,31 +336,36 @@ void Game::start_new_singleplayer_game()
 	BotPlayer* bot_player1 = new BotPlayer();
 
 	//Give botplayer a character
-	bot_player1->set_character(new Character(bot_player1));
+	Character *c2 = new Character_Soldier();
+	c2->set_owner(bot_player1);
+	bot_player1->set_character(c2);
 
 	//Set starting location
 	bot_player1->getCharacter()->set_start_location(100, 100);
 
 	//Remove the dirt around player
-	m_game_level->destroyCircle(100, 100, 80);
+	game_level->destroyCircle(100, 100, 80);
 
 	//Add bot to player list
-	m_players.push_back(bot_player1);
+	players.push_back(bot_player1);
 
 	//Create new bot player
 	BotPlayer* bot_player2 = new BotPlayer();
 
 	//Give botplayer a character
-	bot_player2->set_character(new Character(bot_player2));
+	Character *c3 = new Character_Soldier();
+	c3->set_owner(bot_player2);
+
+	bot_player2->set_character(c3);
 
 	//Set starting location
 	bot_player2->getCharacter()->set_start_location(300, 300);
 
 	//Remove the dirt around player
-	m_game_level->destroyCircle(300, 300, 80);
+	game_level->destroyCircle(300, 300, 80);
 
 	//Add bot to player list
-	m_players.push_back(bot_player2);
+	players.push_back(bot_player2);
 
 	//center camera on local player
 	center_camera_on_local_player();
@@ -366,185 +373,123 @@ void Game::start_new_singleplayer_game()
 
 void Game::center_camera_on_local_player()
 {
-	int x = m_local_player->getCharacter()->getX();
-	int y = m_local_player->getCharacter()->getY();
-	vec2 cam_pos = m_graphics->getCameraPosition();
-	m_graphics->setCameraPosition(((-m_window_width / 2.0) + x), (-m_window_height / 2.0) + y);
+	int x = local_player->getCharacter()->getX();
+	int y = local_player->getCharacter()->getY();
+	vec2 cam_pos = graphics->getCameraPosition();
+	graphics->setCameraPosition(((-WINDOW_WIDTH / 2.0) + x), (-WINDOW_HEIGHT / 2.0) + y);
 }
 
 
-bool Game::on_navigate_to_multiplayer_menu(const CEGUI::EventArgs& e)
+void Game::on_navigate_to_multiplayer_menu()
 {
-	change_game_state(MULTIPLAYER_MENU);
-	return true;
+	change_game_state(MULTIPLAYER_MENU);	
 }
 
-bool Game::on_navigate_to_singleplayer_menu(const CEGUI::EventArgs& e)
+void Game::on_navigate_to_singleplayer_menu()
 {
 	change_game_state(SINGLEPLAYER_MENU);
-	return true;
 }
 
-bool Game::on_navigate_to_loadout_menu(const CEGUI::EventArgs& e)
+void Game::on_navigate_to_loadout_menu()
 {
 	change_game_state(LOADOUT_MENU);
-	return true;
 }
 
-bool Game::on_navigate_to_main_menu(const CEGUI::EventArgs& e)
+void Game::on_navigate_to_main_menu()
 {
-	change_game_state(MAIN_MENU);
-	return true;
+	change_game_state(MAIN_MENU);	
 }
 
-bool Game::on_navigate_to_exit_game(const CEGUI::EventArgs& e)
+void Game::on_navigate_to_exit_game()
 {
 	change_game_state(EXIT_GAME);
-	return true;
 }
 
-bool Game::on_navigate_to_starting_new_singleplayer_Game(const CEGUI::EventArgs& e)
+void Game::on_navigate_to_starting_new_singleplayer_Game()
 {
-	change_game_state(STARTING_NEW_SINGLEPLAYER_GAME);
-	return true;
+	change_game_state(STARTING_NEW_SINGLEPLAYER_GAME);	
 }
 
-bool Game::on_navigate_to_singleplayer_game(const CEGUI::EventArgs& e)
+void Game::on_navigate_to_singleplayer_game()
 {
-	change_game_state(SINGLEPLAYER_GAME);
-	return true;
+	change_game_state(SINGLEPLAYER_GAME);	
 }
 
 
-bool Game::on_navigate_to_singleplayer_game_pause_menu(const CEGUI::EventArgs& e)
+void Game::on_navigate_to_singleplayer_game_pause_menu()
 {
 	change_game_state(SINGLEPLAYER_GAME_PAUSE_MENU);
-	return true;
 }
 
-void Game::initGUI() 
+void Game::init_GUI()
 {
-	//Init cursor gui
-	m_cursor_gui = new GUI();
-	m_cursor_gui->init("GUI");
-	m_cursor_gui->loadScheme("AlfiskoSkin.scheme");
-	m_cursor_gui->setFont("DejaVuSans-10");
+	//INIT MAIN MENU
+	m_main_menu_gui = new Graphical_User_Interface();
+	m_main_menu_gui->add_gui_element(new GUI_Element_Background(TextureType::GAME_LEVEL_TEXTURE_DIRT, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, WINDOW_WIDTH, WINDOW_WIDTH));
 
-	m_cursor_gui->setMouseCursor("AlfiskoSkin/MouseArrow");
-	m_cursor_gui->showMouseCursor();
+	GUI_Element_Button* menu_button = new GUI_Element_Button("Multiplayer", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 200, 128, 64, 22, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_multiplayer_menu));
+	m_main_menu_gui->add_gui_element(menu_button);
 
-	//Init main menu gui
-	m_main_menu_gui = new GUI();
+	menu_button = new GUI_Element_Button("Singleplayer", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 300, 128, 64, 20, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_singleplayer_menu));
+	m_main_menu_gui->add_gui_element(menu_button);
 
-	m_main_menu_gui->init("GUI");
-	m_main_menu_gui->loadScheme("AlfiskoSkin.scheme");
-	m_main_menu_gui->setFont("DejaVuSans-10");
+	menu_button = new GUI_Element_Button("Loadout", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 400, 128, 64, 33, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_loadout_menu));
+	m_main_menu_gui->add_gui_element(menu_button);
 
-	CEGUI::PushButton* main_menu_button_1 = static_cast<CEGUI::PushButton*>(m_main_menu_gui->createWidget("AlfiskoSkin/Button", "main_menu_button_1"));
-	m_main_menu_gui->setWidgetPositionPerc(main_menu_button_1, 0, 0);
-	m_main_menu_gui->setWidgetSizePerc(main_menu_button_1, 0.1, 0.05);
-	m_main_menu_gui->setWidgetPositionPerc(main_menu_button_1, 0.5 - main_menu_button_1->getWidth().d_scale / 2.0, 0.4 - main_menu_button_1->getHeight().d_scale / 2.0);
-	main_menu_button_1->setText("Multiplayer");
-	main_menu_button_1->subscribeEvent(CEGUI::PushButton::EventClicked, CEGUI::Event::Subscriber(&Game::on_navigate_to_multiplayer_menu, this));
+	menu_button = new GUI_Element_Button("Exit", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 600, 128, 64, 50, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_exit_game));
+	m_main_menu_gui->add_gui_element(menu_button);
 
-	CEGUI::PushButton* main_menu_button_2 = static_cast<CEGUI::PushButton*>(m_main_menu_gui->createWidget("AlfiskoSkin/Button", "main_menu_button_2"));
-	m_main_menu_gui->setWidgetPositionPerc(main_menu_button_2, 0, 0);
-	m_main_menu_gui->setWidgetSizePerc(main_menu_button_2, 0.1, 0.05);
-	m_main_menu_gui->setWidgetPositionPerc(main_menu_button_2, 0.5 - main_menu_button_2->getWidth().d_scale / 2.0, 0.5 - main_menu_button_2->getHeight().d_scale / 2.0);
-	main_menu_button_2->setText("Singleplayer");
-	main_menu_button_2->subscribeEvent(CEGUI::PushButton::EventClicked, CEGUI::Event::Subscriber(&Game::on_navigate_to_singleplayer_menu, this));
+	//INIT MULTIPLAYER MENU
+	m_multiplayer_menu_gui = new Graphical_User_Interface();
+	m_multiplayer_menu_gui->add_gui_element(new GUI_Element_Background(TextureType::GAME_LEVEL_TEXTURE_DIRT, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, WINDOW_WIDTH, WINDOW_WIDTH));
 
-	CEGUI::PushButton* main_menu_button_3 = static_cast<CEGUI::PushButton*>(m_main_menu_gui->createWidget("AlfiskoSkin/Button", "main_menu_button_3"));
-	m_main_menu_gui->setWidgetPositionPerc(main_menu_button_3, 0, 0);
-	m_main_menu_gui->setWidgetSizePerc(main_menu_button_3, 0.1, 0.05);
-	m_main_menu_gui->setWidgetPositionPerc(main_menu_button_3, 0.5 - main_menu_button_3->getWidth().d_scale / 2.0, 0.6 - main_menu_button_3->getHeight().d_scale / 2.0);
-	main_menu_button_3->setText("Loadout");
-	main_menu_button_3->subscribeEvent(CEGUI::PushButton::EventClicked, CEGUI::Event::Subscriber(&Game::on_navigate_to_loadout_menu, this));
+	menu_button = new GUI_Element_Button("Start", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 500, 128, 64, 46, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_multiplayer_menu));
+	m_multiplayer_menu_gui->add_gui_element(menu_button);
 
-	CEGUI::PushButton* main_menu_button_4 = static_cast<CEGUI::PushButton*>(m_main_menu_gui->createWidget("AlfiskoSkin/Button", "main_menu_button_4"));
-	m_main_menu_gui->setWidgetPositionPerc(main_menu_button_4, 0, 0);
-	m_main_menu_gui->setWidgetSizePerc(main_menu_button_4, 0.1, 0.05);
-	m_main_menu_gui->setWidgetPositionPerc(main_menu_button_4, 0.5 - main_menu_button_4->getWidth().d_scale / 2.0, 0.75);
-	main_menu_button_4->setText("Exit");
-	main_menu_button_4->subscribeEvent(CEGUI::PushButton::EventClicked, CEGUI::Event::Subscriber(&Game::on_navigate_to_exit_game, this));
+	menu_button = new GUI_Element_Button("Back", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 600, 128, 64, 45, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_main_menu));
+	m_multiplayer_menu_gui->add_gui_element(menu_button);
 
-	//Init multiplayer menu
-	m_multiplayer_menu_gui = new GUI();
+	//INIT SINGLEPLAYER MENU
+	m_singleplayer_menu_gui = new Graphical_User_Interface();
+	m_singleplayer_menu_gui->add_gui_element(new GUI_Element_Background(TextureType::GAME_LEVEL_TEXTURE_DIRT, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, WINDOW_WIDTH, WINDOW_WIDTH));
+	GUI_Element_Check_Box* check_box = new GUI_Element_Check_Box("Map borders", 150, Game::WINDOW_HEIGHT - 50, 32, 32, -100, 10);
+	m_singleplayer_menu_gui->add_gui_element(check_box);
 
-	m_multiplayer_menu_gui->init("GUI");
-	m_multiplayer_menu_gui->loadScheme("AlfiskoSkin.scheme");
-	m_multiplayer_menu_gui->setFont("DejaVuSans-10");
+	menu_button = new GUI_Element_Button("Start", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 500, 128, 64, 46, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_starting_new_singleplayer_Game));
+	m_singleplayer_menu_gui->add_gui_element(menu_button);
 
-	CEGUI::PushButton* multiplayer_menu_button_1 = static_cast<CEGUI::PushButton*>(m_multiplayer_menu_gui->createWidget("AlfiskoSkin/Button", "multiplayer_menu_button_1"));
-	m_multiplayer_menu_gui->setWidgetPositionPerc(multiplayer_menu_button_1, 0, 0);
-	m_multiplayer_menu_gui->setWidgetSizePerc(multiplayer_menu_button_1, 0.1, 0.05);
-	m_multiplayer_menu_gui->setWidgetPositionPerc(multiplayer_menu_button_1, 0.5 - multiplayer_menu_button_1->getWidth().d_scale / 2.0, 0.75);
-	multiplayer_menu_button_1->setText("Back");
-	multiplayer_menu_button_1->subscribeEvent(CEGUI::PushButton::EventClicked, CEGUI::Event::Subscriber(&Game::on_navigate_to_main_menu, this));
+	menu_button = new GUI_Element_Button("Back", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 600, 128, 64, 45, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_main_menu));
+	m_singleplayer_menu_gui->add_gui_element(menu_button);
 
-	//Init singleplayer menu
-	m_singleplayer_menu_gui = new GUI();
+	//INIT LOADOUT MENU
+	m_loadout_menu_gui = new Graphical_User_Interface();
+	m_loadout_menu_gui->add_gui_element(new GUI_Element_Background(TextureType::GAME_LEVEL_TEXTURE_DIRT, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, WINDOW_WIDTH, WINDOW_WIDTH));
 
-	m_singleplayer_menu_gui->init("GUI");
-	m_singleplayer_menu_gui->loadScheme("AlfiskoSkin.scheme");
-	m_singleplayer_menu_gui->setFont("DejaVuSans-10");
+	menu_button = new GUI_Element_Button("Back", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 600, 128, 64, 45, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_main_menu));
+	m_loadout_menu_gui->add_gui_element(menu_button);
 
+	//INIT SINGLEPLAYER PAUSE MENU
+	m_singleplayer_pause_menu_gui = new Graphical_User_Interface();
 
-	CEGUI::PushButton* singleplayer_menu_button_1 = static_cast<CEGUI::PushButton*>(m_singleplayer_menu_gui->createWidget("AlfiskoSkin/Button", "singleplayer_menu_button_1"));
-	m_singleplayer_menu_gui->setWidgetPositionPerc(singleplayer_menu_button_1, 0, 0);
-	m_singleplayer_menu_gui->setWidgetSizePerc(singleplayer_menu_button_1, 0.1, 0.05);
-	m_singleplayer_menu_gui->setWidgetPositionPerc(singleplayer_menu_button_1, 0.5 - singleplayer_menu_button_1->getWidth().d_scale / 2.0, 0.65);
-	singleplayer_menu_button_1->setText("Start game");
-	singleplayer_menu_button_1->subscribeEvent(CEGUI::PushButton::EventClicked, CEGUI::Event::Subscriber(&Game::on_navigate_to_starting_new_singleplayer_Game, this));
+	menu_button = new GUI_Element_Button("Resume", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 300, 128, 64, 37, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_singleplayer_game));
+	m_singleplayer_pause_menu_gui->add_gui_element(menu_button);
 
-	CEGUI::PushButton* singleplayer_menu_button_2 = static_cast<CEGUI::PushButton*>(m_singleplayer_menu_gui->createWidget("AlfiskoSkin/Button", "singleplayer_menu_button_2"));
-	m_singleplayer_menu_gui->setWidgetPositionPerc(singleplayer_menu_button_2, 0, 0);
-	m_singleplayer_menu_gui->setWidgetSizePerc(singleplayer_menu_button_2, 0.1, 0.05);
-	m_singleplayer_menu_gui->setWidgetPositionPerc(singleplayer_menu_button_2, 0.5 - singleplayer_menu_button_2->getWidth().d_scale / 2.0, 0.75);
-	singleplayer_menu_button_2->setText("Back");
-	singleplayer_menu_button_2->subscribeEvent(CEGUI::PushButton::EventClicked, CEGUI::Event::Subscriber(&Game::on_navigate_to_main_menu, this));
+	menu_button = new GUI_Element_Button("Quit", (WINDOW_WIDTH / 2), WINDOW_HEIGHT - 400, 128, 64, 45, 25);
+	menu_button->set_callback(new Callback<Game>(this, &Game::on_navigate_to_main_menu));
+	m_singleplayer_pause_menu_gui->add_gui_element(menu_button);
 
-	//Init loadout menu
-	m_loadout_menu_gui = new GUI();
-
-	m_loadout_menu_gui->init("GUI");
-	m_loadout_menu_gui->loadScheme("AlfiskoSkin.scheme");
-	m_loadout_menu_gui->setFont("DejaVuSans-10");
-
-	CEGUI::PushButton* loadout_menu_button_1 = static_cast<CEGUI::PushButton*>(m_loadout_menu_gui->createWidget("AlfiskoSkin/Button", "loadout_menu_button_1"));
-	m_loadout_menu_gui->setWidgetPositionPerc(loadout_menu_button_1, 0, 0);
-	m_loadout_menu_gui->setWidgetSizePerc(loadout_menu_button_1, 0.1, 0.05);
-	m_loadout_menu_gui->setWidgetPositionPerc(loadout_menu_button_1, 0.5 - loadout_menu_button_1->getWidth().d_scale / 2.0, 0.75);
-	loadout_menu_button_1->setText("Back");
-	loadout_menu_button_1->subscribeEvent(CEGUI::PushButton::EventClicked, CEGUI::Event::Subscriber(&Game::on_navigate_to_main_menu, this));
-
-	//Init singleplayer ingame gui
-	m_singleplayer_game_gui = new GUI();
-
-	m_singleplayer_game_gui->init("GUI");
-	m_singleplayer_game_gui->loadScheme("AlfiskoSkin.scheme");
-	m_singleplayer_game_gui->setFont("DejaVuSans-10");
-
-
-	//Init singleplayer ingame pause menu
-	m_singleplayer_game_pause_menu_gui = new GUI();
-
-	m_singleplayer_game_pause_menu_gui->init("GUI");
-	m_singleplayer_game_pause_menu_gui->loadScheme("AlfiskoSkin.scheme");
-	m_singleplayer_game_pause_menu_gui->setFont("DejaVuSans-10");
-
-	CEGUI::PushButton* singleplayer_game_pause_menu_button1 = static_cast<CEGUI::PushButton*>(m_singleplayer_game_pause_menu_gui->createWidget("AlfiskoSkin/Button", "singleplayer_game_pause_menu_button1"));
-	m_singleplayer_game_pause_menu_gui->setWidgetPositionPerc(singleplayer_game_pause_menu_button1, 0, 0);
-	m_singleplayer_game_pause_menu_gui->setWidgetSizePerc(singleplayer_game_pause_menu_button1, 0.1, 0.05);
-	m_singleplayer_game_pause_menu_gui->setWidgetPositionPerc(singleplayer_game_pause_menu_button1, 0.5 - singleplayer_game_pause_menu_button1->getWidth().d_scale / 2.0, 0.45 - singleplayer_game_pause_menu_button1->getHeight().d_scale / 2.0);
-	singleplayer_game_pause_menu_button1->setText("resume");
-	singleplayer_game_pause_menu_button1->subscribeEvent(CEGUI::PushButton::EventClicked, CEGUI::Event::Subscriber(&Game::on_navigate_to_singleplayer_game, this));
-
-
-	CEGUI::PushButton* singleplayer_game_pause_menu_button2 = static_cast<CEGUI::PushButton*>(m_singleplayer_game_pause_menu_gui->createWidget("AlfiskoSkin/Button", "singleplayer_game_pause_menu_button2"));
-	m_singleplayer_game_pause_menu_gui->setWidgetPositionPerc(singleplayer_game_pause_menu_button2, 0, 0);
-	m_singleplayer_game_pause_menu_gui->setWidgetSizePerc(singleplayer_game_pause_menu_button2, 0.1, 0.05);
-	m_singleplayer_game_pause_menu_gui->setWidgetPositionPerc(singleplayer_game_pause_menu_button2, 0.5 - singleplayer_game_pause_menu_button2->getWidth().d_scale / 2.0, 0.55 - singleplayer_game_pause_menu_button1->getHeight().d_scale / 2.0);
-	singleplayer_game_pause_menu_button2->setText("Quit");
-	singleplayer_game_pause_menu_button2->subscribeEvent(CEGUI::PushButton::EventClicked, CEGUI::Event::Subscriber(&Game::on_navigate_to_main_menu, this));
+	//INIT INGAME
+	m_in_game_gui = new Graphical_User_Interface();
+	m_in_game_gui->add_gui_element(new GUI_Element_HP_Bar(local_player, 25, 50, 200, 30));
+	m_in_game_gui->add_gui_element(new GUI_Element_Skill_Icons(local_player));
 }

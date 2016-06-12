@@ -25,11 +25,20 @@ struct Rect {
 	int height;
 };
 
+struct Game_Level_Option {
+	int width;
+	int height;
+	TextureType dirt_type;
+
+};
+
 class GameLevel : public Game_Object
 {
 public:
-	GameLevel(float width, float height);
+	GameLevel();
 	~GameLevel();
+
+	void setup_new_game_level(Game_Level_Option options);
 
 	void on_tick(unsigned int delta_time);
 	void draw();
@@ -56,6 +65,8 @@ public:
 	void set_texture_type(TextureType texture_type);
 
 private:
+	void clean_up();
+
 	std::queue<Rect> m_changes;
 
 	float m_width;

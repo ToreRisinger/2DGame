@@ -22,6 +22,8 @@ public:
 	void draw();
 	void on_death();
 
+	void set_owner(Character* owner);
+
 	void set_texture_type(TextureType type);
 
 	void set_projectile_type(Projectile_Type type);
@@ -47,6 +49,7 @@ public:
 	void set_effect(int effect_size, int max_life_time, TextureType effect_start_texture, int time_per_frame, int number_of_frames);
 
 	void set_can_hit_players(bool value);
+	void set_can_hit_owner(bool value);
 
 	//REGISTER CALLBACK
 	void register_on_death_callback(std::function<void(Projectile*)> on_death_callback_function);
@@ -88,11 +91,15 @@ protected:
 	bool m_is_stuck;
 
 	bool m_can_hit_player;
+	bool m_can_hit_owner;
+
 	//Effect
 	TextureType m_effect_start_texture;
 	int m_effect_size;
 	int m_max_life_time;
 	int m_time_per_frame;
 	int m_number_of_frames;
+
+	Character* m_owner;
 };
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "GUI.h"
 #include "input.h"
 #include "graphics.h"
 #include "player.h"
@@ -8,6 +7,8 @@
 #include "timer.h"
 #include "game_entity.h"
 #include "ingame_gui.h"
+#include "graphical_user_interface.h"
+#include "gui_element_background.h"
 
 #include <vector>
 #include <list>
@@ -32,6 +33,29 @@ public:
 
 	void run();
 
+	static int WINDOW_WIDTH;
+	static int WINDOW_HEIGHT;
+
+	//-----GRAPHICS-----
+	static Graphics* graphics;
+
+	//-----INPUT-----
+	static Input* input;
+
+	//-----PLAYERS-----
+	static Player* local_player;
+	static std::vector<Player*> players;
+
+	//-----ENTITIES-----
+	static std::list<Game_Entity*> entities;
+
+	//----GAME LEVEL-----
+	static GameLevel* game_level;
+	Game_Level_Option m_game_level_option;
+
+	//-----GAME STATE-----
+	static GameState game_state;
+
 private:
 	void handle_input(Timer& last_update);
 	void on_tick(Timer& last_update);
@@ -44,55 +68,26 @@ private:
 
 	//-----VARIABLES------
 	bool m_running;
-	int m_window_height;
-	int m_window_width;
-	bool m_debug_mode;
-
-	//-----GRAPHICS-----
-	Graphics* m_graphics;
-
-	//-----INPUT-----
-	Input* m_input;
-
-	//-----PLAYERS-----
-	Player* m_local_player;
-	std::vector<Player*> m_players;
-
-	//-----ENTITIES-----
-	std::list<Game_Entity*> m_entities;
-
-	//----GAME LEVEL-----
-	GameLevel* m_game_level;
-
-	//-----GAME STATE-----
-	GameState m_game_state;
 
 	void change_game_state(GameState new_game_state);
 
-	bool on_navigate_to_multiplayer_menu(const CEGUI::EventArgs& e);
-	bool on_navigate_to_singleplayer_menu(const CEGUI::EventArgs& e);
-	bool on_navigate_to_loadout_menu(const CEGUI::EventArgs& e);
-	bool on_navigate_to_main_menu(const CEGUI::EventArgs& e);
-	bool on_navigate_to_exit_game(const CEGUI::EventArgs& e);
-	bool on_navigate_to_starting_new_singleplayer_Game(const CEGUI::EventArgs& e);
-	bool on_navigate_to_singleplayer_game(const CEGUI::EventArgs& e);
-	bool on_navigate_to_singleplayer_game_pause_menu(const CEGUI::EventArgs& e);
+	void on_navigate_to_multiplayer_menu();
+	void on_navigate_to_singleplayer_menu();
+	void on_navigate_to_loadout_menu();
+	void on_navigate_to_main_menu();
+	void on_navigate_to_exit_game();
+	void on_navigate_to_starting_new_singleplayer_Game();
+	void on_navigate_to_singleplayer_game();
+	void on_navigate_to_singleplayer_game_pause_menu();
 
-	//-----GUI-----
-	void initGUI();
-
-	GUI* m_active_gui;
-	GUI *m_main_menu_gui;
-	GUI *m_multiplayer_menu_gui;
-	GUI *m_singleplayer_menu_gui;	
-	GUI *m_loadout_menu_gui;
-
-	GUI *m_cursor_gui;
-
-	GUI *m_singleplayer_game_gui;
-	GUI *m_singleplayer_game_pause_menu_gui;
-
-	//-----INGAME GUI-----
-	Ingame_GUI* m_ingame_GUI;
+	//-----NEW GUI-----
+	void init_GUI();
+	Graphical_User_Interface* m_active_gui;
+	Graphical_User_Interface* m_main_menu_gui;
+	Graphical_User_Interface* m_multiplayer_menu_gui;
+	Graphical_User_Interface* m_singleplayer_menu_gui;
+	Graphical_User_Interface* m_loadout_menu_gui;
+	Graphical_User_Interface* m_singleplayer_pause_menu_gui;
+	Graphical_User_Interface* m_in_game_gui;
 };
 

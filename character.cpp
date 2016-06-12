@@ -2,26 +2,23 @@
 
 #include <iostream>
 #include <math.h>
-
 #include "player.h"
 #include "graphics.h"
-
 #include "item.h"
-
 #include "shovel.h"
 #include "rocket_launcher.h"
 #include "pistol.h"
 #include "rifle.h"
 #include "grenade.h"
 #include "sticky_grenade.h"
-
+#include "game.h"
 #include "math_utils.h"
-
 #include "particle_system.h"
+#include "weapon.h"
+#include "skill.h"
 
-Character::Character(Player* owner) : 
+Character::Character() : 
 Moving_Game_Entity(0, 0, 20, 32, 0, 0),
-m_owner{ owner }, 
 m_left_animation(TextureType::CHARACTER_SOLDIER_LEFT_FRAME1, 100, 4),
 m_right_animation(TextureType::CHARACTER_SOLDIER_RIGHT_FRAME1, 100, 4)
 {
@@ -43,41 +40,29 @@ m_right_animation(TextureType::CHARACTER_SOLDIER_RIGHT_FRAME1, 100, 4)
 	m_aim_degrees = 0;
 	m_aim_speed = 0.2;
 
-	m_item_selected_index = 0;
-
 	m_should_draw_aim_cursor = false;
 
 	m_max_hp = 100;
 	m_current_hp = m_max_hp;
 
-	//Add skills
-	
-	Item* skill = new Shovel();
-	add_item(skill);
-	
-	skill = new Rocket_Launcher();
-	add_item(skill);
+	m_weapon_model = new Weapon();
+	m_weapon_model->set_owner(this);
 
-	skill = new Pistol();
-	add_item(skill);
-
-	skill = new Rifle();
-	add_item(skill);
-
-	skill = new Grenade();
-	add_item(skill);
-
-	skill = new Sticky_Grenade();
-	add_item(skill);
 }
 
 Character::~Character()
 {
-	m_items.clear();
+	m_skills.clear();
 }
 
 void Character::on_tick(unsigned int delta_time)
 {
+	//SKILLS
+	for (int i = 0; i < m_skills.size(); i++) 
+	{
+		m_skills.at(i)->on_tick(delta_time);
+	}
+
 	//on_tick animation if walking
 	if (m_x_vel != 0)
 	{
@@ -99,35 +84,29 @@ void Character::on_tick(unsigned int delta_time)
 		m_walking_counter = 0;
 	}
 
-	m_items[m_item_selected_index]->on_tick(delta_time);
+	m_weapon_model->on_tick(delta_time);
 }
 
 void Character::draw()
 {
-	Game_Object::m_graphics->render_texture(m_active_animation->get_texture_type(), m_x + m_width / 2, m_y + m_height / 2, -0.1, m_width, m_height, 0);
+	Game::graphics->render_texture(m_active_animation->get_texture_type(), m_x + m_width / 2, m_y + m_height / 2, -0.1, m_width, m_height, 0);
 
-	m_items[m_item_selected_index]->draw();
+	m_weapon_model->draw();
 
 	if (m_should_draw_aim_cursor)
 	{
-		draw_aim_cursor();
+		m_weapon_model->draw_aim_cursor();
 	}
 	
 }
 
-void Character::draw_aim_cursor()
-{
-	m_items[m_item_selected_index]->draw_aim_cursor();
-}
-
-
 void Character::handle_collision()
 {
 	int game_level_min_x = 0;
-	int game_level_max_x = Game_Object::m_game_level->getWidth() * 4;
+	int game_level_max_x = Game::game_level->getWidth() * 4;
 
 	int game_level_min_y = 0;
-	int game_level_max_y = Game_Object::m_game_level->getHeight() * 4;
+	int game_level_max_y = Game::game_level->getHeight() * 4;
 
 	bool walking = false;
 
@@ -147,12 +126,12 @@ void Character::handle_collision()
 
 	
 	//PLAYER WALKS ON DIRT
-	if (Game_Object::m_game_level->isSolid(m_x, new_y) ||
-		Game_Object::m_game_level->isSolid(m_x + 4, new_y) ||
-		Game_Object::m_game_level->isSolid(m_x + 8, new_y) ||
-		Game_Object::m_game_level->isSolid(m_x + 12, new_y) ||
-		Game_Object::m_game_level->isSolid(m_x + 16, new_y) ||
-		Game_Object::m_game_level->isSolid(m_x + 20, new_y))
+	if (Game::game_level->isSolid(m_x, new_y) ||
+		Game::game_level->isSolid(m_x + 4, new_y) ||
+		Game::game_level->isSolid(m_x + 8, new_y) ||
+		Game::game_level->isSolid(m_x + 12, new_y) ||
+		Game::game_level->isSolid(m_x + 16, new_y) ||
+		Game::game_level->isSolid(m_x + 20, new_y))
 	{
 		setWalking(true);
 		
@@ -192,17 +171,17 @@ void Character::handle_collision()
 		else if (isWalking())
 		{
 
-			if (!Game_Object::m_game_level->isSolid(new_x, m_y + 8) &&
-				!Game_Object::m_game_level->isSolid(new_x, m_y + 12) &&
-				!Game_Object::m_game_level->isSolid(new_x, m_y + 16) &&
-				!Game_Object::m_game_level->isSolid(new_x, m_y + 20) &&
-				!Game_Object::m_game_level->isSolid(new_x, m_y + 24)
+			if (!Game::game_level->isSolid(new_x, m_y + 8) &&
+				!Game::game_level->isSolid(new_x, m_y + 12) &&
+				!Game::game_level->isSolid(new_x, m_y + 16) &&
+				!Game::game_level->isSolid(new_x, m_y + 20) &&
+				!Game::game_level->isSolid(new_x, m_y + 24)
 				)
 			{
 
-				int steps = Game_Object::m_game_level->isSolid(new_x, m_y) +
-					Game_Object::m_game_level->isSolid(new_x, m_y) *
-					Game_Object::m_game_level->isSolid(new_x, m_y + 4);
+				int steps = Game::game_level->isSolid(new_x, m_y) +
+					Game::game_level->isSolid(new_x, m_y) *
+					Game::game_level->isSolid(new_x, m_y + 4);
 
 				m_y += steps * 4;
 
@@ -229,15 +208,15 @@ void Character::handle_collision()
 		//Not walking
 		else
 		{
-			if (Game_Object::m_game_level->isSolid(new_x, m_y) ||
-				Game_Object::m_game_level->isSolid(new_x, m_y + 4) ||
-				Game_Object::m_game_level->isSolid(new_x, m_y + 8) ||
-				Game_Object::m_game_level->isSolid(new_x, m_y + 12) ||
-				Game_Object::m_game_level->isSolid(new_x, m_y + 16) ||
-				Game_Object::m_game_level->isSolid(new_x, m_y + 20) ||
-				Game_Object::m_game_level->isSolid(new_x, m_y + 24) ||
-				Game_Object::m_game_level->isSolid(new_x, m_y + 28) ||
-				Game_Object::m_game_level->isSolid(new_x, m_y + 32)
+			if (Game::game_level->isSolid(new_x, m_y) ||
+				Game::game_level->isSolid(new_x, m_y + 4) ||
+				Game::game_level->isSolid(new_x, m_y + 8) ||
+				Game::game_level->isSolid(new_x, m_y + 12) ||
+				Game::game_level->isSolid(new_x, m_y + 16) ||
+				Game::game_level->isSolid(new_x, m_y + 20) ||
+				Game::game_level->isSolid(new_x, m_y + 24) ||
+				Game::game_level->isSolid(new_x, m_y + 28) ||
+				Game::game_level->isSolid(new_x, m_y + 32)
 				)
 			{
 				new_x = m_x;
@@ -258,16 +237,16 @@ void Character::handle_collision()
 		}//Is walking
 		else if (isWalking())
 		{
-			if (!Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 8) &&
-				!Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 12) &&
-				!Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 16) &&
-				!Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 20) &&
-				!Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 24)
+			if (!Game::game_level->isSolid(new_x + m_width, m_y + 8) &&
+				!Game::game_level->isSolid(new_x + m_width, m_y + 12) &&
+				!Game::game_level->isSolid(new_x + m_width, m_y + 16) &&
+				!Game::game_level->isSolid(new_x + m_width, m_y + 20) &&
+				!Game::game_level->isSolid(new_x + m_width, m_y + 24)
 				)
 			{
-				int steps = Game_Object::m_game_level->isSolid(new_x + m_width, m_y) +
-					Game_Object::m_game_level->isSolid(new_x + m_width, m_y) *
-					Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 4);
+				int steps = Game::game_level->isSolid(new_x + m_width, m_y) +
+					Game::game_level->isSolid(new_x + m_width, m_y) *
+					Game::game_level->isSolid(new_x + m_width, m_y + 4);
 
 				m_y += steps * 4;
 			
@@ -293,15 +272,15 @@ void Character::handle_collision()
 		//Not walking
 		else
 		{
-			if (Game_Object::m_game_level->isSolid(new_x + m_width, m_y) ||
-				Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 4) ||
-				Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 8) ||
-				Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 12) ||
-				Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 16) ||
-				Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 20) ||
-				Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 24) ||
-				Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 28) ||
-				Game_Object::m_game_level->isSolid(new_x + m_width, m_y + 32)
+			if (Game::game_level->isSolid(new_x + m_width, m_y) ||
+				Game::game_level->isSolid(new_x + m_width, m_y + 4) ||
+				Game::game_level->isSolid(new_x + m_width, m_y + 8) ||
+				Game::game_level->isSolid(new_x + m_width, m_y + 12) ||
+				Game::game_level->isSolid(new_x + m_width, m_y + 16) ||
+				Game::game_level->isSolid(new_x + m_width, m_y + 20) ||
+				Game::game_level->isSolid(new_x + m_width, m_y + 24) ||
+				Game::game_level->isSolid(new_x + m_width, m_y + 28) ||
+				Game::game_level->isSolid(new_x + m_width, m_y + 32)
 				)
 			{
 				new_x = m_x;
@@ -320,12 +299,12 @@ void Character::handle_collision()
 			setYVel(0);
 		}
 
-		if (Game_Object::m_game_level->isSolid(new_x, new_y + m_height) ||
-			Game_Object::m_game_level->isSolid(new_x + 4, new_y + m_height) ||
-			Game_Object::m_game_level->isSolid(new_x + 8, new_y + m_height) ||
-			Game_Object::m_game_level->isSolid(new_x + 12, new_y + m_height) ||
-			Game_Object::m_game_level->isSolid(new_x + 16, new_y + m_height) ||
-			Game_Object::m_game_level->isSolid(new_x + 20, new_y + m_height)
+		if (Game::game_level->isSolid(new_x, new_y + m_height) ||
+			Game::game_level->isSolid(new_x + 4, new_y + m_height) ||
+			Game::game_level->isSolid(new_x + 8, new_y + m_height) ||
+			Game::game_level->isSolid(new_x + 12, new_y + m_height) ||
+			Game::game_level->isSolid(new_x + 16, new_y + m_height) ||
+			Game::game_level->isSolid(new_x + 20, new_y + m_height)
 			)
 		{
 			new_y = m_y;
@@ -410,20 +389,13 @@ void Character::decreaseAim(unsigned int time)
 	}
 }
 
-void Character::use_item()
+void Character::use_skill(int skill_number)
 {
-	m_items.at(m_item_selected_index)->use();
-}
-
-void Character::select_next_item()
-{
-	m_item_selected_index++;
-	if (m_item_selected_index >= m_items.size())
+	
+	if (skill_number <= m_skills.size() && m_skills.at(skill_number - 1)->is_off_cooldown())
 	{
-		m_item_selected_index = 0;
+		m_skills.at(skill_number - 1)->use();
 	}
-
-	m_items[m_item_selected_index]->on_start_use();
 }
 
 vec2 Character::getForwardVector()
@@ -459,13 +431,7 @@ void Character::set_start_location(float x, float y)
 	m_x = x;
 	m_y = y;
 
-	m_items[m_item_selected_index]->on_start_use();
-}
-
-void Character::add_item(Item* item)
-{
-	item->set_owner(this);
-	m_items.push_back(item);
+	m_weapon_model->on_start_use();
 }
 
 void Character::set_should_draw_aim(bool value)
@@ -541,7 +507,7 @@ void Character::take_damage(int damage)
 {
 	m_current_hp -= damage;
 
-	if (m_current_hp < 0)
+	if (m_current_hp <= 0)
 	{
 		m_current_hp = 0;
 
@@ -549,12 +515,22 @@ void Character::take_damage(int damage)
 	}
 }
 
-std::vector<Item*>& Character::get_items()
+void Character::set_owner(Player* owner)
 {
-	return m_items;
+	m_owner = owner;
 }
 
-int Character::get_selected_item_index()
+vec2 Character::get_weapon_position()
 {
-	return m_item_selected_index;
+	return m_weapon_model->get_weapon_position();
+}
+
+Weapon* Character::get_weapon_model()
+{
+	return m_weapon_model;
+}
+
+std::vector<Skill*>* Character::get_skills()
+{
+	return &m_skills;
 }

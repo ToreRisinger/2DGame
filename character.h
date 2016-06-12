@@ -8,6 +8,8 @@
 
 class Player;
 class Item;
+class Weapon;
+class Skill;
 
 enum Direction {
 	LEFT,
@@ -17,13 +19,12 @@ enum Direction {
 class Character : public Moving_Game_Entity
 {
 public:
-	Character(Player* owner);
+	Character();
 	~Character();
 
 	void on_tick(unsigned int delta_time);
 
 	void draw();
-	void draw_aim_cursor();
 
 	void handle_collision();
 
@@ -49,12 +50,7 @@ public:
 	void increaseAim(unsigned int time);
 	void decreaseAim(unsigned int time);
 
-	void use_item();
-	void select_next_item();
-
-	void add_item(Item* item);
-
-	std::vector<Item*>& get_items();
+	void use_skill(int skill_number);
 
 	void set_should_draw_aim(bool value);
 
@@ -70,45 +66,43 @@ public:
 	bool point_is_in_range_of_character(float x, float y, float radius);
 	void take_damage(int damage);
 
-	int get_selected_item_index();
+	void set_owner(Player* owner);
 
-private:
-	//SKILLS
-	std::vector<Item*> m_items;
-	int m_item_selected_index;
+	vec2 get_weapon_position();
+
+	Weapon* get_weapon_model();
+
+	std::vector<Skill*>* get_skills();
+
+protected:
 
 	//ANIMATION
 	Animation m_left_animation;
 	Animation m_right_animation;
 	Animation* m_active_animation;	
-
-	int m_max_aim;
-
 	bool m_should_draw_aim_cursor;
 
 	//VARIABLES
 	Player* m_owner;
-
 	Direction m_direction;
-
-	float m_jump_speed;
-
 	bool m_is_walking;
-
 	int m_walking_counter;
-
-	float m_speed;
-	
-	float m_aim_degrees;
-
-	float m_aim_speed;
-
 	float m_gravity;
-
 	float m_max_acceleration;
+	int m_max_aim;
 
 	//CHARACTER PROPERTIES
 	int m_current_hp;
 	int m_max_hp;
+	float m_aim_degrees;
+	float m_aim_speed;
+	float m_jump_speed;
+	float m_speed;
+
+	//WEAPON
+	Weapon* m_weapon_model;
+
+	//SKILLS
+	std::vector<Skill*> m_skills;
 };
 

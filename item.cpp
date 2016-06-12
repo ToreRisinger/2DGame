@@ -1,8 +1,7 @@
 #include "item.h"
 
 #include "character.h"
-
-#include <iostream>
+#include "game.h"
 
 
 Item::Item(int cooldown) : m_item_cooldown{ cooldown }, m_cooldown{ 0 }
@@ -90,7 +89,7 @@ void Item::draw()
 	//Render weapon
 	Direction character_direction = m_character->getDirection();
 
-	Game_Object::m_graphics->render_texture(TextureType(!(bool)character_direction * m_left_weapon_texture + (bool)character_direction * m_right_weapon_texture),
+	Game::graphics->render_texture(TextureType(!(bool)character_direction * m_left_weapon_texture + (bool)character_direction * m_right_weapon_texture),
 											m_weapon_position.x + m_character->getForwardVector().x * m_recoil_offset.x,
 											m_weapon_position.y + m_character->getForwardVector().y * m_recoil_offset.y,
 											-0.0 - (0.2 * m_character->getDirection()), 
@@ -106,7 +105,7 @@ void Item::draw_muzzle_flash()
 	//Render muzzle flash
 	if (m_muzzle_flash_ms_left > 0)
 	{
-		Game_Object::m_graphics->render_texture(m_muzzle_flash_texture,
+		Game::graphics->render_texture(m_muzzle_flash_texture,
 												m_weapon_position.x + m_character->getForwardVector().x * (28 + m_recoil_offset.x),
 												m_weapon_position.y + m_character->getForwardVector().y * (28 + m_recoil_offset.y), -0.5,
 												m_muzzle_flash_width,
@@ -118,7 +117,7 @@ void Item::draw_muzzle_flash()
 
 void Item::draw_aim_cursor()
 {
-	Game_Object::m_graphics->render_texture(m_aim_texture,
+	Game::graphics->render_texture(m_aim_texture,
 											m_weapon_position.x + m_character->getForwardVector().x * 60,
 											m_weapon_position.y + m_character->getForwardVector().y * 60, -0.5,
 											24,

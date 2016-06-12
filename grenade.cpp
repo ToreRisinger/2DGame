@@ -5,8 +5,7 @@
 #include "functional"
 #include "math_utils.h"
 #include "graphics.h"
-
-#include <iostream>
+#include "game.h"
 
 TextureType Grenade::m_projectile_texture = TextureType::GRANADE_10X10_1;
 float Grenade::m_speed = 0.5;
@@ -28,7 +27,6 @@ Grenade::Grenade() : Item{ 200 }
 	m_left_weapon_texture = TextureType::GRENADE_LAUNCHER_LEFT_WEAPON;
 	m_right_weapon_texture = TextureType::GRENADE_LAUNCHER_RIGHT_WEAPON;
 
-	m_icon_image = TextureType::GRENADE_LAUNCHER_ICON;
 }
 
 Grenade::~Grenade()
@@ -71,6 +69,6 @@ void Grenade::use()
 
 		projectile->set_effect(m_effect_size, m_effect_life_time, m_explosion_texture, m_effect_life_time / m_number_of_effect_frames, m_number_of_effect_frames);
 
-		Game_Object::m_entities->push_front(projectile);
+		Game::entities.push_front(projectile);
 	}
 }
